@@ -15,18 +15,6 @@
 
 ---
 
-## Submission Artifacts
-
-| Artifact | Location | Description |
-|---|---|---|
-| **Presentation Slide Deck (PDF)** | [`./Razorpay Buildathon.pdf`](./Razorpay%20Buildathon.pdf) | Official slide deck submitted for the hackathon |
-| **Presentation Slide Deck (PPTX)** | [`./Razorpay Buildathon.pptx`](./Razorpay%20Buildathon.pptx) | Editable source presentation deck |
-| **Complete Demo Video** | [`./Demo_video.mov`](./Demo_video.mov) | High-definition screen recording walkthrough |
-| **Automated Demo Runner** | [`./run_demo.bat`](./run_demo.bat) | 1-Click interactive launcher for Windows |
-| **System CLI Wrapper** | [`./aegis.bat`](./aegis.bat) / [`./aegis`](./aegis) | Terminal control and verification commands |
-
----
-
 ## 1. Executive Summary & Problem
 
 Autonomous AI buyer agents are transforming e-commerce. Users delegate complex purchasing goals (*"Find a hotel in Goa under ₹3000 this weekend"*) to LLM-driven agents that browse catalogs, negotiate offers, and formulate transactions. However, agentic commerce introduces two critical dilemmas:
@@ -451,36 +439,8 @@ Output:
 
 ---
 
-## 11. Technical Architecture Q&A for Hackathon Judges
 
-### Q1: *"Why can't I just put a prompt guardrail or LLM filter like Llama Guard in front of the payment API?"*
-**Answer**: Prompt guardrails are probabilistic filters attempting to solve a deterministic security problem. Academic research has proven that LLM guardrails can be bypassed using adversarial suffixes, multi-turn roleplay, or token smuggling. In financial engineering, money must never be protected by a probabilistic guard. AEGIS enforces a **deterministic cryptographic boundary**. The payment gateway is air-gapped behind an HMAC-SHA256 signature and hard mathematical invariants in Python code that an LLM has zero ability to override. Even if the LLM completely hallucinates, the mathematical check fails and exactly zero rupees move.
-
-### Q2: *"How does GraphSAGE scale compared to vector embeddings as inventory grows to millions of products?"*
-**Answer**: That is precisely why we chose **GraphSAGE** instead of full-graph GCNs or flat vector search. GraphSAGE is an **inductive representation learning algorithm**. Unlike standard GCNs that require the entire graph Laplacian in memory, GraphSAGE samples a fixed-size 2-hop neighborhood ($S_1=25, S_2=10$). This bounds inference complexity to $O(\prod S_i)$ regardless of whether the catalog has 1,000 or 10,000,000 products. Furthermore, because GraphSAGE learns aggregator functions rather than individual node embeddings, it generalizes zero-shot to newly listed products without requiring full graph retraining.
-
-### Q3: *"What happens if a rogue merchant changes the price between selection and checkout?"*
-**Answer**: This is Attack Vector #1 in our Attack Lab: **Catalog Poisoning**. The candidate price is hashed into the Merkle Derivation Chain at step 03 (`PROPOSAL`). If the merchant updates their catalog price or attempts to submit an updated price during checkout, the step payload hash changes:
-$$H_{\text{proposed}} = \text{SHA-256}(H_{\text{derivation}} \,\|\, \text{NewPrice}) \ne H_{\text{sealed}}$$
-The Merkle derivation check breaks immediately, the invariant check fails, the Payment Gate enforces a HOLD, and the Razorpay order creation is aborted.
-
-### Q4: *"Why do you need an append-only ledger? Doesn't a standard relational database with audit timestamps suffice?"*
-**Answer**: In enterprise autonomous commerce, disputes will occur where the user claims *"my agent acted without authorization"* or the merchant claims *"the agent confirmed the order."* A standard SQL database is mutable: an insider, compromised server admin, or SQL injection can update rows or delete logs. Our ledger uses **SHA-256 hash chaining** analogous to Git and blockchain blocks: every entry incorporates the cryptographic hash of the previous entry. If anyone tampers with a timestamp, price, or decision in the database, the hash cascade breaks and `python backend/cli/main.py ledger verify` detects the exact corrupted block in $O(N)$ time. This provides mathematical non-repudiation in court and compliance disputes.
-
-### Q5: *"How does this integrate with Razorpay in production? Is this just simulated test data?"*
-**Answer**: This is an authentic integration. In our backend, `RazorpayService` communicates directly with `https://api.razorpay.com/v1/orders` using authentic test credentials (`rzp_test_TXdhMpCBiulsOW`). In the frontend, we load official Razorpay `checkout.js`. The payment is processed through Razorpay's modal infrastructure. Upon completion, Razorpay returns an authentic payment payload: `razorpay_payment_id`, `razorpay_order_id`, and `razorpay_signature`. Our backend verifies the signature using HMAC-SHA256 against our test secret:
-$$\text{HMAC-SHA256}(K_{\text{secret}}, \, \text{order\_id} \parallel "|" \parallel \text{payment\_id}) \stackrel{?}{=} \text{razorpay\_signature}$$
-Only when this cryptographic verification passes is the transaction committed to the ledger.
-
-### Q6: *"What is the business model and ROI for Razorpay deploying AEGIS?"*
-**Answer**: AEGIS unlocks an entirely new market for Razorpay: **Autonomous Agent-to-Business (A2B) Commerce**. Currently, banks and merchants block autonomous purchasing because chargeback fraud and liability are unmanageable. AEGIS gives Razorpay the technological moat to become the world's first **Verified Autonomous Payment Gateway**.
-1. **Transaction Revenue**: Standard payment gateway processing fee (1.5% - 2%) on high-frequency agent microtransactions.
-2. **Enterprise SaaS**: The **Trust Engine & Compliance Audit Ledger** sold to enterprises deploying procurement agents.
-3. **Merchant Growth Monetization**: The **Growth Lab**, charging merchants for counterfactual ranking optimization and AI-buyer visibility analytics.
-
----
-
-## 12. Project Directory Structure
+## 11. Project Directory Structure
 
 ```text
 Razorpay/
